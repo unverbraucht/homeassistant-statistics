@@ -29,13 +29,55 @@
                     "description": "True: Take unit from existing entity (only valid for internal statistics, e.g. sensor.sun_solar_azimuth); False: Take unit from own column in imported data"
                 }
             }
+        },
+        "create_fitness_component": {
+            "name": "create_fitness_component",
+            "description": "Discovers a fitness tracker device for later configuration",
+            "fields": {
+                "component_name": {
+                    "name": "component_name",
+                    "description": "Unique identifier for the fitness tracker (alphanumeric and underscores only)"
+                },
+                "vendor": {
+                    "name": "vendor",
+                    "description": "The vendor/manufacturer name of the fitness tracker"
+                },
+                "device_info": {
+                    "name": "device_info",
+                    "description": "Additional device information (model, manufacturer, software/hardware versions)"
+                },
+                "entities": {
+                    "name": "entities",
+                    "description": "List of fitness data entities to track (steps, heart rate, etc.)"
+                }
+            }
         }
     },
     "config": {
         "step": {
             "user": {
                 "description": "[%key:common::config_flow::description::confirm_setup%]"
+            },
+            "discovery": {
+                "title": "Discovered Fitness Trackers",
+                "description": "The following fitness trackers have been discovered. Select one to add to Home Assistant:\n\n{options}",
+                "data": {
+                    "component_name": "Select Fitness Tracker"
+                }
+            },
+            "confirm": {
+                "title": "Add Fitness Tracker",
+                "description": "{description}",
+                "data": {
+                    "add_device": "Add this fitness tracker"
+                }
             }
+        },
+        "abort": {
+            "no_discovered_trackers": "No fitness trackers have been discovered yet. Use the create_fitness_component service to discover a tracker first.",
+            "tracker_not_found": "The selected fitness tracker could not be found.",
+            "not_confirmed": "Fitness tracker addition was not confirmed.",
+            "already_configured": "This fitness tracker has already been configured."
         }
     }
 }

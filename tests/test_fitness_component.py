@@ -1,15 +1,26 @@
-"""Unit tests for fitness component functions."""
+"""Unit tests for fitness component discovery functions."""
 
 import pytest
 from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.import_statistics import fitness_component
+from custom_components.import_statistics.discovery import (
+    get_discovered_tracker,
+    get_all_discovered_trackers,
+    _DISCOVERED_TRACKERS,
+)
+
+
+@pytest.fixture(autouse=True)
+def clear_discovered_trackers():
+    """Clear discovered trackers before each test."""
+    _DISCOVERED_TRACKERS.clear()
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_success(hass) -> None:
-    """Test successful creation of fitness component entities."""
+async def test_discover_fitness_component_success(hass) -> None:
+    """Test successful discovery of fitness component."""
     test_data = {
         "component_name": "my_fitness_tracker",
         "vendor": "Generic Fitness Tracker",
@@ -38,20 +49,27 @@ async def test_create_fitness_component_entities_success(hass) -> None:
     call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
     
     # This should not raise an exception
-    await fitness_component.create_fitness_component_entities(hass, call)
+    await fitness_component.discover_fitness_component(hass, call)
     
-    # Check that the component creation state is set
-    state = hass.states.get("import_statistics.my_fitness_tracker_component_created")
+    # Check that the discovery state is set
+    state = hass.states.get("import_statistics.my_fitness_tracker_discovered")
     assert state is not None
     assert state.state == "True"
     assert state.attributes["component_name"] == "my_fitness_tracker"
     assert state.attributes["vendor"] == "Generic Fitness Tracker"
-    assert len(state.attributes["entities_created"]) == 2
     assert state.attributes["entity_count"] == 2
+    assert "discovered_at" in state.attributes
+    
+    # Check that the tracker is stored in discovery
+    tracker = get_discovered_tracker("my_fitness_tracker")
+    assert tracker is not None
+    assert tracker["component_name"] == "my_fitness_tracker"
+    assert tracker["vendor"] == "Generic Fitness Tracker"
+    assert len(tracker["entities"]) == 2
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_missing_component_name(hass) -> None:
+async def test_discover_fitness_component_missing_component_name(hass) -> None:
     """Test error when component_name is missing."""
     test_data = {
         "vendor": "Generic Fitness Tracker",
@@ -66,11 +84,11 @@ async def test_create_fitness_component_entities_missing_component_name(hass) ->
     call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
     
     with pytest.raises(HomeAssistantError, match="component_name is required"):
-        await fitness_component.create_fitness_component_entities(hass, call)
+        await fitness_component.discover_fitness_component(hass, call)
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_missing_vendor(hass) -> None:
+async def test_discover_fitness_component_missing_vendor(hass) -> None:
     """Test error when vendor is missing."""
     test_data = {
         "component_name": "my_fitness_tracker",
@@ -85,11 +103,11 @@ async def test_create_fitness_component_entities_missing_vendor(hass) -> None:
     call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
     
     with pytest.raises(HomeAssistantError, match="vendor is required"):
-        await fitness_component.create_fitness_component_entities(hass, call)
+        await fitness_component.discover_fitness_component(hass, call)
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_missing_entities(hass) -> None:
+async def test_discover_fitness_component_missing_entities(hass) -> None:
     """Test error when entities list is empty."""
     test_data = {
         "component_name": "my_fitness_tracker",
@@ -100,11 +118,11 @@ async def test_create_fitness_component_entities_missing_entities(hass) -> None:
     call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
     
     with pytest.raises(HomeAssistantError, match="at least one entity must be specified"):
-        await fitness_component.create_fitness_component_entities(hass, call)
+        await fitness_component.discover_fitness_component(hass, call)
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_invalid_component_name(hass) -> None:
+async def test_discover_fitness_component_invalid_component_name(hass) -> None:
     """Test error when component_name contains invalid characters."""
     test_data = {
         "component_name": "my-fitness-tracker",  # Contains hyphen which is invalid
@@ -120,11 +138,11 @@ async def test_create_fitness_component_entities_invalid_component_name(hass) ->
     call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
     
     with pytest.raises(HomeAssistantError, match="Invalid component_name"):
-        await fitness_component.create_fitness_component_entities(hass, call)
+        await fitness_component.discover_fitness_component(hass, call)
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_missing_entity_name(hass) -> None:
+async def test_discover_fitness_component_missing_entity_name(hass) -> None:
     """Test error when entity name is missing."""
     test_data = {
         "component_name": "my_fitness_tracker",
@@ -139,11 +157,11 @@ async def test_create_fitness_component_entities_missing_entity_name(hass) -> No
     call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
     
     with pytest.raises(HomeAssistantError, match="entity name is required"):
-        await fitness_component.create_fitness_component_entities(hass, call)
+        await fitness_component.discover_fitness_component(hass, call)
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_missing_entity_friendly_name(hass) -> None:
+async def test_discover_fitness_component_missing_entity_friendly_name(hass) -> None:
     """Test error when entity friendly_name is missing."""
     test_data = {
         "component_name": "my_fitness_tracker",
@@ -158,11 +176,11 @@ async def test_create_fitness_component_entities_missing_entity_friendly_name(ha
     call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
     
     with pytest.raises(HomeAssistantError, match="entity friendly_name is required"):
-        await fitness_component.create_fitness_component_entities(hass, call)
+        await fitness_component.discover_fitness_component(hass, call)
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_invalid_entity_name(hass) -> None:
+async def test_discover_fitness_component_invalid_entity_name(hass) -> None:
     """Test error when entity name contains invalid characters."""
     test_data = {
         "component_name": "my_fitness_tracker",
@@ -178,12 +196,12 @@ async def test_create_fitness_component_entities_invalid_entity_name(hass) -> No
     call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
     
     with pytest.raises(HomeAssistantError, match="Invalid entity name"):
-        await fitness_component.create_fitness_component_entities(hass, call)
+        await fitness_component.discover_fitness_component(hass, call)
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_minimal_config(hass) -> None:
-    """Test creation with minimal configuration."""
+async def test_discover_fitness_component_minimal_config(hass) -> None:
+    """Test discovery with minimal configuration."""
     test_data = {
         "component_name": "minimal_tracker",
         "vendor": "Minimal Tracker",
@@ -198,21 +216,27 @@ async def test_create_fitness_component_entities_minimal_config(hass) -> None:
     call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
     
     # This should not raise an exception
-    await fitness_component.create_fitness_component_entities(hass, call)
+    await fitness_component.discover_fitness_component(hass, call)
     
-    # Check that the component creation state is set
-    state = hass.states.get("import_statistics.minimal_tracker_component_created")
+    # Check that the discovery state is set
+    state = hass.states.get("import_statistics.minimal_tracker_discovered")
     assert state is not None
     assert state.state == "True"
     assert state.attributes["component_name"] == "minimal_tracker"
     assert state.attributes["vendor"] == "Minimal Tracker"
-    assert len(state.attributes["entities_created"]) == 1
     assert state.attributes["entity_count"] == 1
+    
+    # Check that the tracker is stored in discovery
+    tracker = get_discovered_tracker("minimal_tracker")
+    assert tracker is not None
+    assert tracker["component_name"] == "minimal_tracker"
+    assert tracker["vendor"] == "Minimal Tracker"
+    assert len(tracker["entities"]) == 1
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_with_device_info(hass) -> None:
-    """Test creation with device info."""
+async def test_discover_fitness_component_with_device_info(hass) -> None:
+    """Test discovery with device info."""
     test_data = {
         "component_name": "device_tracker",
         "vendor": "Device Vendor",
@@ -237,154 +261,69 @@ async def test_create_fitness_component_entities_with_device_info(hass) -> None:
     call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
     
     # This should not raise an exception
-    await fitness_component.create_fitness_component_entities(hass, call)
+    await fitness_component.discover_fitness_component(hass, call)
     
-    # Check that the component creation state is set
-    state = hass.states.get("import_statistics.device_tracker_component_created")
+    # Check that the discovery state is set
+    state = hass.states.get("import_statistics.device_tracker_discovered")
     assert state is not None
     assert state.state == "True"
     assert state.attributes["component_name"] == "device_tracker"
     assert state.attributes["vendor"] == "Device Vendor"
-    assert len(state.attributes["entities_created"]) == 1
     assert state.attributes["entity_count"] == 1
-
-
-def test_fitness_sensor_entity_properties(hass) -> None:
-    """Test FitnessSensorEntity properties."""
-    component_name = "test_tracker"
-    entity_config = {
-        "name": "test_entity",
-        "friendly_name": "Test Entity",
-        "unit_of_measurement": "steps",
-        "device_class": "step",
-        "state_class": "total_increasing",
-        "icon": "mdi:foot-print",
-    }
-    device_info = {
-        "name": "Test Device",
-        "identifiers": {("import_statistics", component_name)},
-    }
     
-    sensor = fitness_component.FitnessSensorEntity(hass, component_name, entity_config, device_info)
-    
-    assert sensor.name == "Test Entity"
-    assert sensor.unique_id == "import_statistics_test_tracker_test_entity"
-    assert sensor.entity_id == "sensor.test_tracker_test_entity"
-    assert sensor.native_unit_of_measurement == "steps"
-    assert sensor.device_class == "step"
-    assert sensor.state_class == "total_increasing"
-    assert sensor.icon == "mdi:foot-print"
-    assert sensor.should_poll is False
-    assert sensor.device_info == device_info
+    # Check that the tracker is stored in discovery
+    tracker = get_discovered_tracker("device_tracker")
+    assert tracker is not None
+    assert tracker["component_name"] == "device_tracker"
+    assert tracker["vendor"] == "Device Vendor"
+    assert len(tracker["entities"]) == 1
+    assert tracker["device_info"]["model"] == "DT-2000"
 
 
 @pytest.mark.asyncio
-async def test_create_fitness_component_entities_optional_attributes_not_set(hass) -> None:
-    """Test that optional attributes are not set when they are None."""
-    test_data = {
-        "component_name": "optional_tracker",
-        "vendor": "Optional Tracker",
+async def test_discover_multiple_fitness_components(hass) -> None:
+    """Test discovering multiple fitness components."""
+    # Discover first tracker
+    test_data1 = {
+        "component_name": "tracker1",
+        "vendor": "Vendor 1",
         "entities": [
             {
                 "name": "steps",
                 "friendly_name": "Steps",
-                # Note: unit_of_measurement and device_class are intentionally omitted
             },
         ],
     }
     
-    call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
+    call1 = ServiceCall("import_statistics", "create_fitness_component", test_data1, test_data1)
+    await fitness_component.discover_fitness_component(hass, call1)
     
-    # This should not raise an exception
-    await fitness_component.create_fitness_component_entities(hass, call)
-    
-    # Check that the entity was created
-    state = hass.states.get("sensor.optional_tracker_steps")
-    assert state is not None
-    
-    # Verify that optional attributes are not present in the state attributes
-    assert "unit_of_measurement" not in state.attributes
-    assert "device_class" not in state.attributes
-    assert "state_class" not in state.attributes
-    assert "icon" not in state.attributes
-    
-    # Verify required attributes are still present
-    assert "friendly_name" in state.attributes
-    assert "unique_id" in state.attributes
-
-
-@pytest.mark.asyncio
-async def test_create_fitness_component_entities_mixed_attributes(hass) -> None:
-    """Test entities with mixed optional attributes."""
-    test_data = {
-        "component_name": "mixed_tracker",
-        "vendor": "Mixed Tracker",
+    # Discover second tracker
+    test_data2 = {
+        "component_name": "tracker2",
+        "vendor": "Vendor 2",
         "entities": [
-            {
-                "name": "steps",
-                "friendly_name": "Steps",
-                "unit_of_measurement": "steps",
-                # device_class omitted
-                "state_class": "total_increasing",
-                # icon omitted
-            },
             {
                 "name": "heart_rate",
                 "friendly_name": "Heart Rate",
-                # unit_of_measurement omitted
-                "device_class": "heart_rate",
-                # state_class omitted
-                "icon": "mdi:heart-pulse",
             },
         ],
     }
     
-    call = ServiceCall("import_statistics", "create_fitness_component", test_data, test_data)
+    call2 = ServiceCall("import_statistics", "create_fitness_component", test_data2, test_data2)
+    await fitness_component.discover_fitness_component(hass, call2)
     
-    # This should not raise an exception
-    await fitness_component.create_fitness_component_entities(hass, call)
+    # Check both trackers are discovered
+    all_trackers = get_all_discovered_trackers()
+    assert len(all_trackers) == 2
+    assert "tracker1" in all_trackers
+    assert "tracker2" in all_trackers
     
-    # Check first entity
-    steps_state = hass.states.get("sensor.mixed_tracker_steps")
-    assert steps_state is not None
-    assert "unit_of_measurement" in steps_state.attributes
-    assert steps_state.attributes["unit_of_measurement"] == "steps"
-    assert "device_class" not in steps_state.attributes
-    assert "state_class" in steps_state.attributes
-    assert steps_state.attributes["state_class"] == "total_increasing"
-    assert "icon" not in steps_state.attributes
+    # Check discovery states
+    state1 = hass.states.get("import_statistics.tracker1_discovered")
+    assert state1 is not None
+    assert state1.attributes["vendor"] == "Vendor 1"
     
-    # Check second entity
-    heart_state = hass.states.get("sensor.mixed_tracker_heart_rate")
-    assert heart_state is not None
-    assert "unit_of_measurement" not in heart_state.attributes
-    assert "device_class" in heart_state.attributes
-    assert heart_state.attributes["device_class"] == "heart_rate"
-    assert "state_class" not in heart_state.attributes
-    assert "icon" in heart_state.attributes
-    assert heart_state.attributes["icon"] == "mdi:heart-pulse"
-
-
-def test_fitness_sensor_entity_minimal_config(hass) -> None:
-    """Test FitnessSensorEntity with minimal configuration."""
-    component_name = "minimal_tracker"
-    entity_config = {
-        "name": "minimal_entity",
-        "friendly_name": "Minimal Entity",
-    }
-    device_info = {
-        "name": "Minimal Device",
-        "identifiers": {("import_statistics", component_name)},
-    }
-    
-    sensor = fitness_component.FitnessSensorEntity(hass, component_name, entity_config, device_info)
-    
-    assert sensor.name == "Minimal Entity"
-    assert sensor.unique_id == "import_statistics_minimal_tracker_minimal_entity"
-    assert sensor.entity_id == "sensor.minimal_tracker_minimal_entity"
-    assert sensor.native_unit_of_measurement is None
-    assert sensor.device_class is None
-    assert sensor.state_class is None
-    assert sensor.icon is None
-    assert sensor.should_poll is False
-    assert sensor.device_info == device_info
+    state2 = hass.states.get("import_statistics.tracker2_discovered")
+    assert state2 is not None
+    assert state2.attributes["vendor"] == "Vendor 2"

@@ -33,19 +33,27 @@ import_from_file:
         boolean:
 
 create_fitness_component:
+  name: Discover Fitness Tracker
+  description: Discovers a fitness tracker device for later configuration through the integration setup flow
   fields:
     component_name:
       required: true
+      name: Component Name
+      description: Unique identifier for the fitness tracker (alphanumeric and underscores only)
       example: "my_fitness_tracker"
       selector:
         text:
     vendor:
       required: true
+      name: Vendor
+      description: The vendor/manufacturer name of the fitness tracker
       example: "Generic Fitness Tracker"
       selector:
         text:
     device_info:
       required: false
+      name: Device Info
+      description: Additional device information (model, manufacturer, software/hardware versions)
       example: |
         {
           "model": "FT-1000",
@@ -57,6 +65,8 @@ create_fitness_component:
         object:
     entities:
       required: true
+      name: Entities
+      description: List of fitness data entities to track (steps, heart rate, etc.)
       example: |
         [
           {
@@ -74,22 +84,3 @@ create_fitness_component:
         ]
       selector:
         object:
-    datetime_format:
-      required: false
-      example: "%d.%m.%Y %H:%M"
-      default: "%d.%m.%Y %H:%M"
-      selector:
-        select:
-          custom_value: true
-          options:
-            - "%d.%m.%Y %H:%M"
-            - "%Y.%m.%d %H:%M"
-            - "%Y-%m-%d %H:%M"
-            - "%m/%d/%Y %H:%M"
-            - "%d/%m/%Y %H:%M"
-    unit_from_entity:
-      required: false
-      example: true
-      default: true
-      selector:
-        boolean:

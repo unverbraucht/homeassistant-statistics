@@ -62,9 +62,26 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylin
     """Async set up is called when Home Assistant is loading our component."""
     
     async def handle_create_fitness_component(call: ServiceCall) -> None:
-        """Handle the fitness component creation service call."""
+        """Handle the fitness component discovery service call."""
         _LOGGER.info("Service handle_create_fitness_component called")
-        await fitness_component.create_fitness_component_entities(hass, call)
+        await fitness_component.discover_fitness_component(hass, call)
+        
+        component_name = call.data.get(ATTR_COMPONENT_NAME)
+        vendor = call.data.get("vendor", "Fitness Tracker")
+        device_info = call.data.get("device_info", {})
+        
+        # Create a more descriptive title for discovery
+        model = device_info.get("model", "")
+        title = f"{vendor} {model}".strip() if model else vendor
+        
+        # Trigger discovery flow notification with proper discovery_info
+        _LOGGER.info(f"Triggering discovery flow for {component_name}")
+        await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": "discovery", "title_placeholders": {"name": title}},
+            data={"component_name": component_name, "vendor": vendor},
+        )
+        _LOGGER.info(f"Discovery flow initiated for {component_name}")
 
     # Register the async service in the async context
     hass.services.async_register(DOMAIN, SERVICE_CREATE_FITNESS_COMPONENT, handle_create_fitness_component)
@@ -72,9 +89,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylin
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pylint: disable=unused-argument  # noqa: ARG001
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up the device based on a config entry."""
+    _LOGGER.info(f"Setting up config entry for {entry.data.get('component_name')}")
+    
+    # Forward the setup to the sensor platform
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
+    
+    _LOGGER.info(f"Successfully set up config entry for {entry.data.get('component_name')}")
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    _LOGGER.info(f"Unloading config entry for {entry.data.get('component_name')}")
+    
+    # Unload the sensor platform
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor"])
+    
+    if unload_ok:
+        _LOGGER.info(f"Successfully unloaded config entry for {entry.data.get('component_name')}")
+    
+    return unload_ok
 
 
 def import_stats(hass: HomeAssistant, stats: dict, unit_from_entity: UnitFrom) -> None:
